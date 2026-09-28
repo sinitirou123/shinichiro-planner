@@ -73,3 +73,33 @@ test('保存データの検証は壊れたデータを拒否する',()=>{
   const s=fresh();assert.equal(C.validState(s),true);s.events=[event('e','2026-09-31',600,25)];assert.equal(C.validState(s),false);
   s.events=[event('e','2026-09-28',1600,60)];assert.equal(C.validState(s),false);
 });
+
+test('固定予定を追加すると重なる作業と休憩をまとめて移し、TODOの対応を保つ',()=>{
+  const s=fresh();s.tasks=[{id:'todo',text:'確認',createdDate:'2026-09-28',done:false}];
+  s.events=[event('work','2026-09-28',600,25,'task',{taskId:'todo'}),event('rest','2026-09-28',625,5,'break',{ownerEventId:'work'}),event('meeting','2026-09-28',870,150,'regular')];
+  const result=C.addFixedPlan(s,{date:'2026-09-28',title:'配達',startMin:570,durMin:300},now);
+  assert.deepEqual(result,{ok:true,moved:1});assert.ok(C.validState(s));noOverlaps(s,'2026-09-28');
+  assert.equal(s.events.find(e=>e.id==='work').startMin,1020);assert.equal(s.events.some(e=>e.id==='rest'),false);
+  assert.equal(s.events.find(e=>e.id==='meeting').startMin,870);C.markEvent(s,'work',true);assert.equal(s.tasks[0].done,true);
+});
+test('固定予定や完了済みの作業と重なる追加は元のデータを変えずに拒否する',()=>{
+  for(const existing of [event('meeting','2026-09-28',600,60,'regular'),event('done','2026-09-28',600,25,'task',{done:true})]){
+    const s=fresh();s.events=[existing];const before=JSON.stringify(s);
+    assert.deepEqual(C.addFixedPlan(s,{date:'2026-09-28',title:'追加',startMin:600,durMin:60},now),{ok:false,error:'conflict'});
+    assert.equal(JSON.stringify(s),before);
+  }
+});
+test('移動先がない場合は固定予定の追加を取り消し、作業も休憩も失わない',()=>{
+  const s=fresh();s.events=[event('work','2026-09-28',600,25),event('rest','2026-09-28',625,5,'break',{ownerEventId:'work'}),...Array.from({length:59},(_,i)=>event('busy-'+i,C.addDays('2026-09-28',i+1),540,1080,'regular'))];
+  const before=JSON.stringify(s);
+  assert.deepEqual(C.addFixedPlan(s,{date:'2026-09-28',title:'終日',startMin:540,durMin:1080},now),{ok:false,error:'no-space'});
+  assert.equal(JSON.stringify(s),before);
+});
+test('作業後の休憩だけ重なる場合も移動し、翌3時までの固定予定を扱える',()=>{
+  const s=fresh();s.events=[event('work','2026-09-28',1470,25),event('rest','2026-09-28',1495,5,'break',{ownerEventId:'work'})];
+  assert.deepEqual(C.addFixedPlan(s,{date:'2026-09-28',title:'深夜配信',startMin:1495,durMin:125},now),{ok:true,moved:1});
+  noOverlaps(s,'2026-09-28');assert.ok(C.validState(s));
+  const before=JSON.stringify(s);
+  assert.deepEqual(C.addFixedPlan(s,{date:'2026-09-28',title:'範囲外',startMin:1500,durMin:150},now),{ok:false,error:'invalid'});
+  assert.equal(JSON.stringify(s),before);
+});
