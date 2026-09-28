@@ -110,6 +110,14 @@ h2,h3{margin:0 0 12px}.hint{font-size:12px;line-height:1.7;color:var(--muted)}
 .note{background:#fffaf0;border:1px solid #eadfcd;border-radius:13px;padding:12px;min-height:125px}
 .note .date{font-size:10px;color:var(--muted);margin-bottom:6px}
 .planner{display:grid;grid-template-columns:.9fr 1.1fr;gap:12px}
+.fixed-plans{grid-column:1/-1;min-width:0}
+.fixed-plan-head{display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap}
+.fixed-plan-day{display:flex;align-items:center;gap:8px;white-space:nowrap}.fixed-plan-day select{width:auto}
+.fixed-plan-row{display:flex;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px dashed var(--line)}
+.fixed-plan-time{flex:0 0 auto;font-weight:700;font-size:14px}.fixed-plan-title{min-width:0;overflow-wrap:anywhere}
+.fixed-plan-form{margin-top:14px}.fixed-plan-form summary{cursor:pointer;font-weight:700;color:var(--accent)}
+.fixed-plan-form .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fixed-plan-form label{display:block}.fixed-plan-form .hint{margin-top:8px}
 .planner-controls .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .label{font-size:11px;color:var(--muted);margin:9px 0 5px}
 .primary{
@@ -249,21 +257,33 @@ h2,h3{margin:0 0 12px}.hint{font-size:12px;line-height:1.7;color:var(--muted)}
 
 <section id="planner" class="view">
   <div class="planner">
+    <div class="card fixed-plans">
+      <div class="fixed-plan-head">
+        <h2>決まっている予定</h2>
+        <label class="fixed-plan-day" for="planDay">日付 <select id="planDay"></select></label>
+      </div>
+      <div class="hint">配達・配信・打ち合わせなど。この時間を避けて、作業と休憩を組みます。</div>
+      <div id="fixedPlans" aria-live="polite"></div>
+      <details class="fixed-plan-form" id="fixedPlanForm">
+        <summary>＋ 決まっている予定を追加</summary>
+        <label class="label" for="fixedTitle">予定の名前</label>
+        <input class="textinput" id="fixedTitle" placeholder="例：配達・スト６・配信">
+        <div class="row">
+          <div><label class="label" for="fixedStart">開始時刻</label><select id="fixedStart"></select></div>
+          <div><label class="label" for="fixedEnd">終了時刻</label><select id="fixedEnd"></select></div>
+        </div>
+        <div class="hint">重なる未完了の作業は空き時間へ移します。固定予定・完了済みの予定は動かしません。</div>
+        <button class="primary" id="addFixedPlan">固定予定を追加</button>
+      </details>
+      <div class="hint" id="fixedPlanStatus" role="status"></div>
+    </div>
     <div class="card planner-controls">
       <h2>AIで予定を組む</h2>
       <div class="hint">やることを一言で入れるだけ。25分以内の手順に分解して、休憩込みで手帳へ入れる。</div>
       <div class="label">やること</div>
       <input class="textinput" id="planInput" value="動画編集" placeholder="例：動画編集">
-      <div class="row">
-        <div>
-          <div class="label">開始する日</div>
-          <select id="planDay"></select>
-        </div>
-        <div>
-          <div class="label">開始時刻</div>
-          <select id="planStart"></select>
-        </div>
-      </div>
+      <label class="label" for="planStart">作業を始める時刻</label>
+      <select id="planStart"></select>
       <div class="rulebox">
         <b>基本ルール</b><br>起床目安 9:00<br>
         25分 作業 → 5分 休憩<br>
