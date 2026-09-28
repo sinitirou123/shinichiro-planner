@@ -12,6 +12,7 @@
 - 作業時間は9:00〜翌3:00。作業は元の長さ、TODOは25分です。5分休憩と3件ごとの30分自由時間も確保します。
 - 60日先まで空きがなければ元の項目を保持します。過去の日付に繰り越し履歴が残り、再読み込みで重複しません。
 - 新規予定は固定予定か作業タスクを選べます。
+- 「AIで組む」には選んだ日の「決まっている予定」が表示され、開始・終了時刻を指定して追加できます。重なる未完了作業は休憩込みで空き時間へ移し、固定予定や完了済みの予定と重なる追加は止めます。
 
 ## 個人データと引き継ぎ
 
@@ -38,7 +39,7 @@ GitHubの画面でpublic内のファイルを編集し「Commit changes」で保
 - public/planner-core.js: 日付・空き時間・繰り越し
 - public/planner-ui.js: 操作・保存・バックアップ
 - public/seed-data.js: 空の初期データ
-- tests/scheduler.test.cjs: 自動配置の13件の検証
+- tests/scheduler.test.cjs: 自動配置と固定予定の追加の17件の検証
 - .github/workflows/pages.yml: テストと自動公開
 - netlify.toml と public/_headers: 将来Netlifyへ移す場合の設定（GitHub Pagesでは_headersは使いません）
 
