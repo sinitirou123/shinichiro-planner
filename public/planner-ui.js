@@ -130,7 +130,14 @@
     }).join('');
   }
   function renderMemos() {$('memoGrid').innerHTML=state.memos.map(m=>`<div class="note"><div class="date">${esc(m.date)}</div>${esc(m.text)}</div>`).join('');}
-  function renderAll() {renderWeek();renderToday();renderTasks();renderMemos();renderSave();renderNotice();}
+  const fullTime=min=>(min>=1440?'翌':'')+fmt(min);
+  function renderFixedPlans() {
+    if(!$('fixedPlans'))return;
+    const date=dateForDay(+$('planDay').value);
+    const events=state.events.filter(e=>e.type==='regular'&&e.date===date).sort((a,b)=>a.startMin-b.startMin);
+    $('fixedPlans').innerHTML=events.length?events.map(e=>`<div class="fixed-plan-row"><div class="fixed-plan-time">${fullTime(e.startMin)}〜${fullTime(e.startMin+e.durMin)}</div><div class="fixed-plan-title">${link(e.title,e.url)}${e.done?' <small class="hint">完了</small>':''}</div></div>`).join(''):'<div class="empty">この日の固定予定はまだありません。</div>';
+  }
+  function renderAll() {renderWeek();renderToday();renderTasks();renderMemos();renderSave();renderNotice();renderFixedPlans();}
   function fillSelects() {
     for(const id of ['planDay','eventDay']) {
       const previous=$(id).value;
@@ -141,6 +148,27 @@
       if($(id).options.length)continue;
       for(let m=C.START;m<C.END;m+=30)$(id).add(new Option(fmt(m),String(m)));
     }
+    renderFixedPlans();
+  }
+  $('planDay').onchange=()=>{renderFixedPlans();if($('fixedPlanStatus'))$('fixedPlanStatus').textContent='';};
+  if($('addFixedPlan')) {
+    for(let min=C.START;min<C.END;min+=30)$('fixedStart').add(new Option(fullTime(min),String(min)));
+    for(let min=C.START+30;min<=C.END;min+=30)$('fixedEnd').add(new Option(fullTime(min),String(min)));
+    $('fixedStart').value=String(C.START);$('fixedEnd').value=String(C.START+60);
+    $('fixedStart').onchange=()=>{if(+$('fixedEnd').value<=+$('fixedStart').value)$('fixedEnd').value=String(Math.min(C.END,+$('fixedStart').value+60));};
+    $('addFixedPlan').onclick=()=>{
+      if(!latest())return;
+      const title=$('fixedTitle').value.trim(),startMin=+$('fixedStart').value,durMin=+$('fixedEnd').value-startMin;
+      if(!title){$('fixedPlanStatus').textContent='予定の名前を入力してください。';$('fixedTitle').focus();return;}
+      if(durMin<=0){$('fixedPlanStatus').textContent='終了時刻は開始時刻より後にしてください。';return;}
+      if(!C.addFixedPlan){$('fixedPlanStatus').textContent='更新中です。少し待って再読み込みしてください。';return;}
+      const working=clone(state),result=C.addFixedPlan(working,{title,date:dateForDay(+$('planDay').value),startMin,durMin});
+      if(!result.ok){$('fixedPlanStatus').textContent=result.error==='conflict'?'固定予定・完了済みの予定・休憩などと重なっています。時間を確認してください。':result.error==='no-space'?'作業を移せる空き時間がなく、追加できませんでした。':'入力した日時を確認してください。';return;}
+      const previous=state;state=working;
+      if(!save()){state=previous;$('fixedPlanStatus').textContent='保存できませんでした。入力はそのままです。';return;}
+      $('fixedTitle').value='';$('fixedPlanForm').open=false;renderAll();
+      $('fixedPlanStatus').textContent=`「${title}」を追加しました。`+(result.moved?`重なっていた作業${result.moved}件を空き時間へ移しました。`:'');
+    };
   }
   function openModal(day=selectedDay,start=19*60) {
     if(locked)return;
