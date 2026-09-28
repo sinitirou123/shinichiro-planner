@@ -99,6 +99,31 @@
     if(moved || waiting) state.lastRollover={at:now.toISOString(),moved,waiting};
     return {moved,waiting};
   }
+  function addFixedPlan(state, input, now=new Date()) {
+    const fixed={...input,id:'new-fixed',title:typeof input.title==='string'?input.title.trim():'',type:'regular',done:false,auto:false};
+    if(!fixed.title || !validState({version:15,events:[fixed],tasks:[],memos:[]}))return {ok:false,error:'invalid'};
+    const working=JSON.parse(JSON.stringify(state));
+    const conflict=e=>e.date===fixed.date&&e.startMin<fixed.startMin+fixed.durMin&&e.startMin+e.durMin>fixed.startMin;
+    const hit=working.events.filter(conflict),ids=new Set();
+    for(const e of hit) {
+      const task=e.type==='task'?e:['break','free'].includes(e.type)?working.events.find(t=>t.id===e.ownerEventId&&t.date===e.date):null;
+      if(task?.type==='task'&&!task.done)ids.add(task.id);
+    }
+    const moving=working.events.filter(e=>ids.has(e.id)).sort((a,b)=>a.startMin-b.startMin);
+    const associatedRest=e=>['break','free'].includes(e.type)&&moving.some(t=>t.id===e.ownerEventId&&t.date===e.date);
+    if(hit.some(e=>!ids.has(e.id)&&!associatedRest(e)))return {ok:false,error:'conflict'};
+    working.events=working.events.filter(e=>!ids.has(e.id)&&!associatedRest(e));
+    fixed.id=nextId(working);working.events.push(fixed);
+    for(let i=0;i<moving.length;i++) {
+      const e=moving[i],previous={date:e.date,startMin:e.startMin,durMin:e.durMin};
+      if(!placeWork(working,e,now,fixed.date,START,(i+1)%3===0?30:0))return {ok:false,error:'no-space'};
+      e.replannedFrom={...previous,at:now.toISOString()};
+      if(e.date!==previous.date){e.history=[...(e.history||[]),previous];e.carryover=true;}
+    }
+    if(moving.length)working.lastRollover={at:now.toISOString(),moved:moving.length,waiting:0};
+    Object.assign(state,working);
+    return {ok:true,moved:moving.length};
+  }
   return {START,END,dateKey,parseDate,addDays,today,currentMinute,nextId,overlaps,findSlot,validState,
-    markEvent,markTask,placeWork,rollover};
+    markEvent,markTask,placeWork,rollover,addFixedPlan};
 });
