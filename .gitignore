@@ -1,0 +1,5 @@
+original/
+*.json
+node_modules/
+*.log
+*.zip
